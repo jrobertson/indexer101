@@ -118,7 +118,9 @@ class Indexer101
     
   end
   
-  def scan_dxindex(*locations)
+  # scan levels: 0 = tags only; 1 = all words in title (including tags)
+  #  
+  def scan_dxindex(*locations, level: 0)
     
     t = Time.now
     threads = locations.flatten.map do |location|
@@ -132,17 +134,40 @@ class Indexer101
     puts ("dxindex documents loaded in " + ("%.2f" % t2).brown \
           + " seconds").info
     
-    a.each.with_index do |dx, i|
+
+    id = 1
+    
+    a.each do |dx|
+
+      id2 = id
       
       @indexer.uri_index.merge! Hash[dx.all.reverse.map.with_index \
-                      {|x,j| [(i+1)*10000 + (j+1), [x.title, x.url].join(' ')]}]
+        {|x,i| [id+i, [Time.parse(x.created), x.title, x.url]]}]
               
-      dx.all.reverse.each.with_index do |x,j|
-        x.title.scan(/#(\w+)/).flatten(1).each do |keyword|
-          @indexer.index[keyword.to_sym] ||= []
-          @indexer.index[keyword.to_sym] << (i+1)*10000 + (j+1)
+      dx.all.reverse.each do |x|
+                
+        case level
+        when 0 
+          
+          x.title.scan(/(\#\w+)/).flatten(1).each do |keyword|
+            @indexer.index[keyword.downcase.to_sym] ||= []
+            @indexer.index[keyword.downcase.to_sym] << id2
+          end
+          
+        when 1
+          
+          x.title.split(/[\s:"!\?\(\)£]+(?=[\w#_'-]+)/).each do |keyword|
+            @indexer.index[keyword.downcase.to_sym] ||= []
+            @indexer.index[keyword.downcase.to_sym] << id2
+          end
+
         end
+                
+        id2 += 1
+        
       end    
+      
+      id = id2
       
     end
     
@@ -182,22 +207,31 @@ class Indexer101
     
     t = Time.now
     
-    results = keywords.flatten(1).flat_map do |x|
+    r = keywords.flatten(1).map do |x|
       
       a = []
       a += @indexer.index[x.to_sym].reverse if @indexer.index.has_key? x.to_sym
       
       if x.length > 3 then
-        a += @indexer.index.keys.reverse.grep(/^#{x}/).flat_map\
-            {|y| @indexer.index[y]}
-        a += @indexer.index.keys.reverse.grep(/#{x}/).flat_map\
-            {|y| @indexer.index[y]} 
+        a += @indexer.index.keys.grep(/^#{x}/i).flat_map\
+            {|y| @indexer.index[y].reverse}
+        a += @indexer.index.keys.grep(/#{x}/i).flat_map\
+            {|y| @indexer.index[y].reverse} 
       end
       
       puts ('a: ' + a.inspect).debug if @debug
-      a.uniq.map {|y| @indexer.uri_index[y].split(/\s+(?=https?[^\s]+$)/,2) }
+      
+      a.uniq.map {|y| @indexer.uri_index[y]}
       
     end
+    
+    # group by number of results found, sort by count, then by date
+    a3 = r.flatten(1).group_by(&:last).to_a.sort do |x, x2|
+      -([x.last.length, x.last.first] <=> [x2.last.length, x2.last.first])
+    end
+    
+    # fetch the 1st record from each group item
+    results = a3.map {|x| x.last.first}
     
     t2 = Time.now - t
     puts ("found %s results" % results.length).info

@@ -1,6 +1,6 @@
 Gem::Specification.new do |s|
   s.name = 'indexer101'
-  s.version = '0.2.0'
+  s.version = '0.2.1'
   s.summary = 'Experimental gem to search a list of words 1 character at ' + 
       'a time. Intended for use as auto suggestion.'
   s.authors = ['James Robertson']
