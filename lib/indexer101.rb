@@ -6,6 +6,7 @@ require 'c32'
 require 'thread'
 require 'thwait'
 require 'dynarex'
+require 'dxlite'
 
 
 class Indexer101
@@ -124,12 +125,22 @@ class Indexer101
     
     t = Time.now
     threads = locations.flatten.map do |location|
-      Thread.new {Thread.current[:v] = Dynarex.new location}      
+      
+      Thread.new {
+        
+        Thread.current[:v] = case File.extname(location)
+        when '.xml'
+          Dynarex.new location
+        when '.json'
+          DxLite.new location
+        end
+      }      
     end
     
     ThreadsWait.all_waits(*threads)
     
     a = threads.map {|x| x[:v]}
+
     t2 = Time.now - t
     puts ("dxindex documents loaded in " + ("%.2f" % t2).brown \
           + " seconds").info
