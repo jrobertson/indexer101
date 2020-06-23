@@ -132,7 +132,7 @@ class Indexer101
         when '.xml'
           Dynarex.new location
         when '.json'
-          DxLite.new location
+          DxLite.new location, debug: false
         end
       }      
     end
@@ -140,7 +140,7 @@ class Indexer101
     ThreadsWait.all_waits(*threads)
     
     a = threads.map {|x| x[:v]}
-
+    puts '_a: ' + a.inspect if @debug
     t2 = Time.now - t
     puts ("dxindex documents loaded in " + ("%.2f" % t2).brown \
           + " seconds").info
@@ -167,7 +167,8 @@ class Indexer101
           
         when 1
           
-          x.title.split(/[\s:"!\?\(\)£]+(?=[\w#_'-]+)/).each do |keyword|
+          # \u{A3} = £ <- represented as Unicode to avoid ASCII to UTF-8 error
+          x.title.split(/[\s:"!\?\(\)\u{A3}]+(?=[\w#_'-]+)/).each do |keyword|
             @indexer.index[keyword.downcase.to_sym] ||= []
             @indexer.index[keyword.downcase.to_sym] << id2
           end
