@@ -130,9 +130,9 @@ class Indexer101
         
         Thread.current[:v] = case File.extname(location)
         when '.xml'
-          Dynarex.new location
+          Dynarex.new location, debug: @debug
         when '.json'
-          DxLite.new location, debug: false
+          DxLite.new location, debug: @debug
         end
       }      
     end
@@ -151,6 +151,11 @@ class Indexer101
     a.each do |dx|
 
       id2 = id
+      
+      if @debug then
+        puts 'dx: ' + dx.class.inspect
+        puts 'dx.all: ' + dx.all.inspect
+      end
       
       @indexer.uri_index.merge! Hash[dx.all.reverse.map.with_index \
         {|x,i| [id+i, [Time.parse(x.created), x.title, x.url]]}]
@@ -215,7 +220,7 @@ class Indexer101
   
   # enter the exact keywords to search from the index
   #
-  def search(*keywords)
+  def search(*keywords, minchars: 3)
     
     t = Time.now
     
@@ -224,7 +229,7 @@ class Indexer101
       a = []
       a += @indexer.index[x.to_sym].reverse if @indexer.index.has_key? x.to_sym
       
-      if x.length > 3 then
+      if x.length >= minchars then
         a += @indexer.index.keys.grep(/^#{x}/i).flat_map\
             {|y| @indexer.index[y].reverse}
         a += @indexer.index.keys.grep(/#{x}/i).flat_map\
