@@ -127,12 +127,20 @@ class Indexer101
     threads = locations.flatten.map do |location|
       
       Thread.new {
-        
-        Thread.current[:v] = case File.extname(location)
-        when '.xml'
-          Dynarex.new location, debug: @debug
-        when '.json'
-          DxLite.new location, debug: @debug
+
+        if location.is_a?(Dynarex) or location.is_a?(DxLite) then
+      
+          Thread.current[:v] = location
+      
+        elsif location.is_a? String
+      
+          case File.extname(location)
+          when '.xml'
+            Thread.current[:v] = Dynarex.new location, debug: @debug
+          when '.json'
+            Thread.current[:v] = DxLite.new location, debug: @debug
+          end
+      
         end
       }      
     end
